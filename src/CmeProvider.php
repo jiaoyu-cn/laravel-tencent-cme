@@ -39,32 +39,35 @@ class CmeProvider extends ServiceProvider
         $this->publishes([__DIR__ . '/config/cme.php' => config_path('cme.php')]);
     }
 
-
     /**
-     * ============================
-     * 以下为逻辑代码
+     * 项目签名
+     * @param $userId
+     * @param $projectId
+     * @param string $label
+     * @param string $action
+     * @return array
      */
-    public function getSignature($userId, $projectId, $action = "OpenProject"): array
+    public function getSignature($userId, $projectId, string $action = "OpenProject", string $label = 'cme'): array
     {
-        if (!$config = config('cme.cme')) {
+        if (!config("cme.{$label}")) {
             return $this->message(1, "获取配置文件失败：" . $label);
         }
 
         $current = time();
         $expired = $current + 300;  // 签名有效期：1天
         $args = array(
-            "secretId" => config('cme.cme.secret_id', ''),
+            "secretId" => config("cme.{$label}.secret_id", ''),
             "currentTimeStamp" => $current,
             "expireTime" => $expired,
             "random" => rand(),
-            "platform" => config('cme.cme.platform', ''),
+            "platform" => config("cme.{$label}.platform", ''),
             "userId" => $userId,
             "action" => $action,
             "openProject.projectId" => $projectId,
         );
         // 计算签名
         $original = http_build_query($args);
-        $signature = base64_encode(hash_hmac('SHA1', $original, config('cme.cme.secret_key', ''), true) . $original);
+        $signature = base64_encode(hash_hmac('SHA1', $original, config("cme.{$label}.secret_key", ''), true) . $original);
 
         return $this->message(0, '成功', ['sign' => $signature]);
     }
@@ -73,12 +76,13 @@ class CmeProvider extends ServiceProvider
      * 创建项目
      * @param $name
      * @param $ownerId
+     * @param string $label
      * @return array
      */
-    public function CreateProject($name, $ownerId): array
+    public function CreateProject($name, $ownerId, string $label = "cme"): array
     {
         $params = [
-            'Platform' => config('cme.cme.platform', ''),
+            'Platform' => config("cme.{$label}.platform", ''),
             'Name' => $name,
             'Owner' => [
                 'Type' => 'PERSON',
@@ -90,36 +94,38 @@ class CmeProvider extends ServiceProvider
                 'AspectRatio' => '16:9'
             ]
         ];
-        return $this->httpRequest('CreateProject', $params);
+        return $this->httpRequest('CreateProject', $params, $label);
     }
 
     /**
      * 项目引入资源
      * @param $projectId
      * @param $fileId
+     * @param string $label
      * @return array
      */
-    public function ImportMediaToProject($projectId, $fileId): array
+    public function ImportMediaToProject($projectId, $fileId, string $label = "cme"): array
     {
         $params = [
-            'Platform' => config('cme.cme.platform', ''),
+            'Platform' => config("cme.{$label}.platform", ''),
             'ProjectId' => $projectId,
             'VodFileId' => $fileId,
             'PreProcessDefinition' => 10
         ];
-        return $this->httpRequest('ImportMediaToProject', $params);
+        return $this->httpRequest('ImportMediaToProject', $params, $label);
     }
 
     /**
      * 导出项目
      * @param $projectId
      * @param $projectName
+     * @param string $label
      * @return array
      */
-    public function ExportVideoEditProject($projectId, $projectName): array
+    public function ExportVideoEditProject($projectId, $projectName, string $label = "cme"): array
     {
         $params = [
-            'Platform' => config('cme.cme.platform', ''),
+            'Platform' => config("cme.{$label}.platform", ''),
             'ProjectId' => $projectId,
             'Definition' => config('cme.global.definition'),
             'ExportDestination' => config('cme.global.exportDestination'),
@@ -127,18 +133,34 @@ class CmeProvider extends ServiceProvider
                 'Name' => $projectName,
             ],
         ];
-        return $this->httpRequest('ExportVideoEditProject', $params);
+        return $this->httpRequest('ExportVideoEditProject', $params, $label);
+    }
+
+    /**
+     * 获取任务详情
+     * @param $taskId
+     * @param string $label
+     * @return array
+     */
+    public function DescribeTaskDetail($taskId, string $label = 'cme'): array
+    {
+        $params = [
+            'Platform' => config("cme.{$label}.platform", ''),
+            'TaskId' => $taskId,
+        ];
+        return $this->httpRequest('DescribeTaskDetail', $params, $label);
     }
 
     /**
      * 构造请求头Authorization
      * @param $postData
+     * @param string $label
      * @return string
      */
-    private function getAuthorization($postData): string
+    private function getAuthorization($postData, string $label = "cme"): string
     {
-        $secretId = config('cme.cme.secret_id', '');
-        $secretKey = config('cme.cme.secret_key', '');
+        $secretId = config("cme.{$label}.secret_id", '');
+        $secretKey = config("cme.{$label}.secret_key", '');
         $timestamp = time();
         $service = "cme";
         $algorithm = "TC3-HMAC-SHA256";
@@ -177,7 +199,7 @@ class CmeProvider extends ServiceProvider
             . ", SignedHeaders=content-type;host, Signature=" . $signature;
     }
 
-    private function httpRequest($action, array $params = []): array
+    private function httpRequest($action, array $params = [], string $label = 'cme'): array
     {
         $host = config('cme.global.host', '');
         $url = "https://{$host}";
@@ -185,7 +207,7 @@ class CmeProvider extends ServiceProvider
             $client = new Client();
             $resp = $client->request('POST', $url, ['verify' => false,
                 //'debug'=>true,
-                'headers' => ['Authorization' => $this->getAuthorization($params),
+                'headers' => ['Authorization' => $this->getAuthorization($params, $label),
                     'Content-Type' => 'application/json; charset=utf-8',
                     'Host' => $host,
                     'X-TC-Action' => $action,
