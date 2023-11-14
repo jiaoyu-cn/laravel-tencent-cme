@@ -1,0 +1,27 @@
+{
+    "name": "githen/laravel-tencent-cme",
+    "description": "基于laravel的腾讯智能创作",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "~6.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Githen\\LaravelTencentCme\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "pengz",
+            "email": "pengz@foxmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Githen\\LaravelTencentCme\\CmeProvider"
+            ]
+        }
+    }
+}
