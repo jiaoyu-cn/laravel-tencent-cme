@@ -3,8 +3,6 @@
 namespace Githen\LaravelTencentCme;
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -73,10 +71,11 @@ class CmeProvider extends ServiceProvider
 
     /**
      * 创建项目
-     * @param $params
+     * @param $name
+     * @param $ownerId
      * @return array
      */
-    public function CreateProject($name, $ownerId)
+    public function CreateProject($name, $ownerId): array
     {
         $params = [
             'Platform' => config('cme.cme.platform', ''),
@@ -91,11 +90,16 @@ class CmeProvider extends ServiceProvider
                 'AspectRatio' => '16:9'
             ]
         ];
-        $resp = $this->httpRequest('CreateProject', $params);
-        return $resp;
+        return $this->httpRequest('CreateProject', $params);
     }
 
-    public function ImportMediaToProject($projectId, $fileId)
+    /**
+     * 项目引入资源
+     * @param $projectId
+     * @param $fileId
+     * @return array
+     */
+    public function ImportMediaToProject($projectId, $fileId): array
     {
         $params = [
             'Platform' => config('cme.cme.platform', ''),
@@ -103,11 +107,16 @@ class CmeProvider extends ServiceProvider
             'VodFileId' => $fileId,
             'PreProcessDefinition' => 10
         ];
-        $resp = $this->httpRequest('ImportMediaToProject', $params);
-        return $resp;
+        return $this->httpRequest('ImportMediaToProject', $params);
     }
 
-    public function ExportVideoEditProject($projectId, $projectName)
+    /**
+     * 导出项目
+     * @param $projectId
+     * @param $projectName
+     * @return array
+     */
+    public function ExportVideoEditProject($projectId, $projectName): array
     {
         $params = [
             'Platform' => config('cme.cme.platform', ''),
@@ -118,10 +127,14 @@ class CmeProvider extends ServiceProvider
                 'Name' => $projectName,
             ],
         ];
-        $resp = $this->httpRequest('ExportVideoEditProject', $params);
-        return $resp;
+        return $this->httpRequest('ExportVideoEditProject', $params);
     }
 
+    /**
+     * 构造请求头Authorization
+     * @param $postData
+     * @return string
+     */
     private function getAuthorization($postData): string
     {
         $secretId = config('cme.cme.secret_id', '');
@@ -164,7 +177,7 @@ class CmeProvider extends ServiceProvider
             . ", SignedHeaders=content-type;host, Signature=" . $signature;
     }
 
-    private function httpRequest($action, $params = [])
+    private function httpRequest($action, array $params = []): array
     {
         $host = config('cme.global.host', '');
         $url = "https://{$host}";
